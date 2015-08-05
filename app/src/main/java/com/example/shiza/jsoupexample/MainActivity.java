@@ -1,18 +1,13 @@
 package com.example.shiza.jsoupexample;
 
-import android.app.ProgressDialog;
-import android.content.Context;
 import android.os.AsyncTask;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -20,11 +15,13 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 
 public class MainActivity extends AppCompatActivity {
 
-    String url = "https://muslimmemo.com/page/2";
+    String url = "https://muslimmemo.com/";
     Button buttonTitle;
     Elements heading;
     Elements headingLink;
@@ -34,9 +31,9 @@ public class MainActivity extends AppCompatActivity {
     Elements category;
     Elements categoryLinks;
     Elements published;
-
+    static int page = 1;
     LinearLayout linlaHeaderProgress;
-
+    boolean flag = false;
 
 
     @Override
@@ -44,65 +41,75 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        buttonTitle = (Button)findViewById(R.id.buttonTitle);
+        buttonTitle = (Button) findViewById(R.id.buttonTitle);
         linlaHeaderProgress = (LinearLayout) findViewById(R.id.linlaHeaderProgress);
 
-        buttonTitle.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
 
-                Title title = new Title(getApplicationContext());
-               title.execute();
-            }
-        });
+        for (page = 1; page < 100; page++) {
 
+            Log.d("Page no: flag: ", page + " " + flag);
+            if ( page > 1 )
+                url = "https://muslimmemo.com/page/" + page + "/";
+            new MyTask().execute(url);
+        }
 
     }
 
-    private class Title extends AsyncTask<Void,Void,Void>
-    {
+    private class MyTask extends AsyncTask<String, Void, Boolean> {
 
-        String title;
+        String url;
 
-        private Context mContext;
-
-        public Title(Context context) {
-            mContext = context;
-
-        }
-
-        protected void onPreExecute()
-        {
-            super.onPreExecute();
-
-            linlaHeaderProgress.setVisibility(View.VISIBLE);
-//            progressDialog = new ProgressDialog(MainActivity.this);
-//
-//            progressDialog.setTitle("Fetching from site.");
-//            progressDialog.setMessage("Loading...");
-//
-//            progressDialog.setIndeterminate(false);
-//
-//            progressDialog.show();
+        @Override
+        protected void onPreExecute() {
+//            Log.d("result", "I am in pre execute");
         }
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Boolean doInBackground(String... params) {
+
+            try {
+                HttpURLConnection.setFollowRedirects(false);
+                HttpURLConnection con = (HttpURLConnection) new URL(params[0]).openConnection();
+                con.setRequestMethod("HEAD");
+                System.out.println(con.getResponseCode());
+                url = params[0];
+                return (con.getResponseCode() == HttpURLConnection.HTTP_OK);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            boolean bResponse = result;
+            if (bResponse) {
+//                Log.d("result", "File exists");
+                new Title().execute(url);
+            } else {
+                flag = true;
+                Log.d("result", "flag is true here.");
+            }
+        }
+    }
+
+    private class Title extends AsyncTask<String, Void, Void> {
+
+
+
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            linlaHeaderProgress.setVisibility(View.VISIBLE);
+
+        }
+
+        @Override
+        protected Void doInBackground(String... params) {
             try {
 
-                /*
-* What I need to fetch from the site:
-* 1. heading. -> document.getElementByClassName("entry-title");
-* 2. heading-link -> document.select("span.entry-title > a[href]")
-* 3. summary of the heading. -> document.getElementByClassName("entry-summary");
-* 4. author's link. -> document.select("span.author > a[href]")
-* 5. author's name. ->  document.getElementByClassName("author");
-* 6. category. -> document.getElementByClassName("cat-links");
-* 7. category's link. -> document.select("span.cat-links > a[href]")
-* 8. image from the post.
-*
-* */
-                Document document = Jsoup.connect(url).get();
+                Document document = Jsoup.connect(params[0]).get();
 
                 heading = document.getElementsByClass("entry-title");
                 headingLink = document.select("h1.entry-title > a[href]");
@@ -112,58 +119,17 @@ public class MainActivity extends AppCompatActivity {
                 category = document.getElementsByClass("cat-links");
                 categoryLinks = document.select("span.cat-links > a[href]");
                 published = document.getElementsByClass("published");
-//                link = document.select("a").first();
             } catch (IOException e) {
                 e.printStackTrace();
             }
             return null;
         }
 
-        protected void onPostExecute(Void result)
-        {
-            TextView textTitle = ( TextView )findViewById(R.id.textTitle);
-            textTitle.setText("in post execute.");
-            for (Element headingdiff : heading )
-            {
-                Log.d("heading",headingdiff.text());
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
-            for (Element headingdiff : headingSummary )
-            {
-                Log.d("headingSummary",headingdiff.text());
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
-            for (Element headingdiff : headingLink )
-            {
-                Log.d("headingLink",headingdiff.attr("href"));
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
-            for (Element headingdiff : author )
-            {
-                Log.d("author",headingdiff.text());
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
-            for (Element headingdiff : authorLinks )
-            {
-                Log.d("authorLink",headingdiff.attr("href"));
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
-            for (Element headingdiff : category )
-            {
-                Log.d("category",headingdiff.text());
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
-            for (Element headingdiff : categoryLinks )
-            {
-                Log.d("categoryLink",headingdiff.attr("href"));
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
+        protected void onPostExecute(Void result) {
 
-            for (Element headingdiff : published )
-            {
-                Log.d("published",headingdiff.text());
-                Toast.makeText(mContext,headingdiff.text(),Toast.LENGTH_LONG).show();
-            }
+            TextView textTitle = (TextView) findViewById(R.id.textTitle);
+            textTitle.setText("in post execute.");
+
             linlaHeaderProgress.setVisibility(View.GONE);
         }
     }
