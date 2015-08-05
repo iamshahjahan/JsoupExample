@@ -16,20 +16,20 @@ import java.util.ArrayList;
 public class CustomAdapter extends BaseAdapter {
 
     Context context;
-    ArrayList<String> heading;
-    ArrayList<String> content;
-    ArrayList<String> author;
-    ArrayList<String> published;
+    ArrayList<String> heading = new ArrayList<>();
+    ArrayList<String> content = new ArrayList<>();
+    ArrayList<String> author = new ArrayList<>();
+    ArrayList<String> published = new ArrayList<>();
     private static LayoutInflater inflater=null;
 
     public CustomAdapter(Context activity,ArrayList<String> heading,ArrayList<String> content,
                          ArrayList<String> author,ArrayList<String> published)
     {
         context = activity;
-        this.heading = heading;
-        this.content = content;
-        this.author = author;
-        this.published = published;
+        this.heading.addAll(heading);
+        this.content.addAll(content);
+        this.author.addAll(author);
+        this.published.addAll(published);
         inflater = ( LayoutInflater )context.
                 getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     }
@@ -81,5 +81,15 @@ public class CustomAdapter extends BaseAdapter {
 
 
         return rowView;
+    }
+
+    public void addItem(ArrayList<String> heading,ArrayList<String> content,
+                        ArrayList<String> author,ArrayList<String> published)
+    {
+        this.heading.addAll(heading);
+        this.content.addAll(content);
+        this.author.addAll(author);
+        this.published.addAll(published);
+        notifyDataSetChanged();
     }
 }

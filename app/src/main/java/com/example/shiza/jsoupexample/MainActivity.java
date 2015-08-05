@@ -23,9 +23,10 @@ import java.net.URL;
 import java.util.ArrayList;
 
 
-public class MainActivity extends AppCompatActivity {
 
-    String url = "https://muslimmemo.com/";
+public class MainActivity extends AppCompatActivity implements AsyncResponse {
+
+    String url = "https://muslimmemo.com";
     Button buttonTitle;
     Elements heading;
     Elements headingLink;
@@ -35,31 +36,69 @@ public class MainActivity extends AppCompatActivity {
     Elements category;
     Elements categoryLinks;
     Elements published;
+    Elements next;
     static int page = 1;
     LinearLayout linlaHeaderProgress;
     boolean flag = false;
     ListView listView;
+    CustomAdapter customAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        Wrapper wrapper_final = new Wrapper();
         buttonTitle = (Button) findViewById(R.id.buttonTitle);
         linlaHeaderProgress = (LinearLayout) findViewById(R.id.linlaHeaderProgress);
         listView = (ListView)findViewById(R.id.listView);
 
 
-//        for (page = 1; page < 10; page++) {
-//
-//            Log.d("Page no: flag: ", page + " " + flag);
-//            if ( page > 1 )
-                url = "https://muslimmemo.com/";
-            new MyTask(getApplicationContext()).execute(url);
-//        }
+
+            Title title = new Title(getApplicationContext());
+            title.delegate = this;
+            title.execute(url);
 
     }
-    private class Wrapper
+
+
+    @Override
+    public void processFinish(Wrapper output)
+    {
+
+
+
+
+        if ( output.nextUrl != null)
+        {
+            if ( output.nextUrl.contains("page/2"))
+            {
+                customAdapter = new CustomAdapter(this, output.heading, output.headingSummary,
+                        output.author, output.published);
+                listView.setAdapter(customAdapter);
+            }
+            else
+            {
+                customAdapter.addItem(output.heading, output.headingSummary,
+                        output.author, output.published);
+            }
+            Title title = new Title(getApplicationContext());
+            title.delegate = this;
+            title.execute(output.nextUrl);
+        }
+        else
+        {
+            customAdapter.addItem(output.heading, output.headingSummary,
+                    output.author, output.published);
+            Log.d("tag","is null");
+        }
+    }
+
+
+//    Implement an interface
+
+
+
+    public class Wrapper
     {
         ArrayList<String> heading = new ArrayList<>();
         ArrayList<String> headingLinks = new ArrayList<>();
@@ -69,59 +108,13 @@ public class MainActivity extends AppCompatActivity {
         ArrayList<String> category = new ArrayList<>();
         ArrayList<String> categoryLinks = new ArrayList<>();
         ArrayList<String> published = new ArrayList<>();
+        String nextUrl ;
     }
-
-
-
-    private class MyTask extends AsyncTask<String, Void, Boolean> {
-
-        String url;
-
-        Context mContext;
-
-        public MyTask(Context context)
-        {
-            mContext = context;
-        }
-
-        @Override
-        protected void onPreExecute() {
-//            Log.d("result", "I am in pre execute");
-        }
-
-        @Override
-        protected Boolean doInBackground(String... params) {
-
-            try {
-                HttpURLConnection.setFollowRedirects(false);
-                HttpURLConnection con = (HttpURLConnection) new URL(params[0]).openConnection();
-                con.setRequestMethod("HEAD");
-                System.out.println(con.getResponseCode());
-                url = params[0];
-                return (con.getResponseCode() == HttpURLConnection.HTTP_OK);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Boolean result) {
-            boolean bResponse = result;
-            if (bResponse) {
-//                Log.d("result", "File exists");
-                new Title(mContext).execute(url);
-            } else {
-                flag = true;
-                Log.d("result", "flag is true here.");
-            }
-        }
-    }
-
 
     private class Title extends AsyncTask<String, Void, Wrapper> {
-
+        Wrapper w = new Wrapper();
         Context mContext;
+        public AsyncResponse delegate=null;
 
         public Title(Context context)
         {
@@ -136,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected Wrapper doInBackground(String... params) {
-            Wrapper w = new Wrapper();
+
             try {
 
                 Document document = Jsoup.connect(params[0]).get();
@@ -149,6 +142,7 @@ public class MainActivity extends AppCompatActivity {
                 category = document.getElementsByClass("cat-links");
                 categoryLinks = document.select("span.cat-links > a[href]");
                 published = document.getElementsByClass("published");
+                next = document.select("a.next");
 
 
                 for ( Element headings : heading)
@@ -174,6 +168,15 @@ public class MainActivity extends AppCompatActivity {
                     w.published.add(publisheds.text());
                 }
 
+                if ( !next.isEmpty() )
+                {
+                    w.nextUrl = next.attr("href");
+                }
+                else
+                {
+                    w.nextUrl = null;
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -182,12 +185,7 @@ public class MainActivity extends AppCompatActivity {
 
         protected void onPostExecute(Wrapper result) {
 
-            TextView textTitle = (TextView) findViewById(R.id.textTitle);
-            textTitle.setText("in post execute.");
-            listView.setAdapter(new CustomAdapter(mContext,result.heading,result.headingSummary,
-                    result.author,result.published));
-
-            Log.d("listView","the size is " + result.headingSummary.size());
+            delegate.processFinish(result);
             linlaHeaderProgress.setVisibility(View.GONE);
         }
     }
